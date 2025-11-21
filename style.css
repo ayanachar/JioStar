@@ -7,7 +7,7 @@ body {
 
 /* Navbar */
 .navbar {
-    background-color: #354656;
+    background-color: #114b71;
     color: white;
     padding: 1rem 2rem;
     display: flex;
@@ -507,4 +507,44 @@ tbody tr:hover { background:#f8f9fa; }
     .table-container { overflow-x:auto; }
     table { min-width: 800px; }
     .pagination-container { justify-content: center; flex-wrap: wrap; }
+}
+/* Styling for the Calendar Jumper Selects */
+.cal-select {
+    /* Base appearance removal for cross-browser consistency */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    padding: 5px 8px;
+    margin: 0 4px;
+    
+    /* Style to blend with dashboard */
+    background-color: white; /* White background */
+    color: #2c3e50; /* Dark text */
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s;
+    
+    /* Custom arrow icon using CSS */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%236c757d' d='M2 0L0 2h4zm0 5L0 3h4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 8px 10px;
+    padding-right: 20px; /* Space for the custom arrow */
+}
+
+.cal-select:hover {
+    border-color: #3498db;
+}
+
+/* Ensure the header container aligns items correctly */
+.cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 }

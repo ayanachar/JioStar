@@ -1,4 +1,4 @@
-// Sample data (REMAINS UNCHANGED)
+// Sample data
 const sampleData = [
     { patchName: "Windows Secure Boot Patch", severity: "Critical", computerName: "SRV-101", group: "servers", from: "2024-04-10", to: "2024-04-11", status: "Remediated" },
     { patchName: "Chrome Security Patch 124", severity: "High", computerName: "WKS-102", group: "workstations", from: "2024-04-12", to: "2024-04-13", status: "Outstanding" },
@@ -442,12 +442,41 @@ function formatToDisplay(date) {
     return `${day}-${month}-${year}`;
 }
 
+// FIX: New renderCalendar includes Month/Year selection dropdowns
 function renderCalendar(date) {
     const year = date.getFullYear();
     const month = date.getMonth(); 
     
     // Get month name
-    const monthName = date.toLocaleString('en-us', { month: 'long' });
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-indexed (0 = Jan, 10 = Nov)
+    const currentDay = today.getDate(); // 1-indexed (1-31)
+
+    // --- Dynamic Month & Year Selects ---
+    let yearOptions = '';
+    const startYear = today.getFullYear() - 50; // Use your current -50 setting
+    const endYear = currentYear;    // CRITICAL FIX: Stop at the current year
+    
+    for (let y = startYear; y <= endYear; y++) {
+        const selected = y === year ? 'selected' : '';
+        yearOptions += `<option value="${y}" ${selected}>${y}</option>`;
+    }
+
+    let monthOptions = '';
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    monthNames.forEach((name, m) => {
+        let disabled = '';
+        const selected = m === month ? 'selected' : '';
+        
+        // Disable months IF the current calendar year is the actual current year
+        // AND the month being generated (m) is greater than the actual current month (currentMonth)
+        if (year === currentYear && m > currentMonth) {
+            disabled = 'disabled';
+        }
+        
+        monthOptions += `<option value="${m}" ${selected} ${disabled}>${name}</option>`;
+    });
 
     // Calculate days
     const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -455,10 +484,13 @@ function renderCalendar(date) {
 
     let html = '<div class="custom-calendar">';
     
-    // Header
+    // Header with SELECT inputs
     html += `<div class="cal-header">
                 <button class="cal-nav-btn" onclick="navigateMonth(-1)">&#9664;</button>
-                <span class="cal-title">${monthName} ${year}</span>
+                
+                <select class="cal-select" id="monthSelect" onchange="jumpToMonth(this.value)">${monthOptions}</select>
+                <select class="cal-select" id="yearSelect" onchange="jumpToYear(this.value)">${yearOptions}</select>
+
                 <button class="cal-nav-btn" onclick="navigateMonth(1)">&#9654;</button>
             </div>`;
     
@@ -480,11 +512,20 @@ function renderCalendar(date) {
         // Date format to write to input (DD-MM-YYYY)
         const displayDate = formatToDisplay(currentDayDate); 
         
-        // Highlight logic (basic: checks if date matches active input value)
+        // --- START DAY DISABLING LOGIC ---
+        let dayDisabled = '';
+        // Disable days IF the current calendar month/year is the actual current month/year
+        // AND the day being generated (day) is greater than the actual current day (currentDay)
+        if (year === currentYear && month === currentMonth && day > currentDay) {
+            dayDisabled = 'disabled';
+        }
+        // --- END DAY DISABLING LOGIC ---
+        
+        // Highlight logic
         const isSelected = activeInput && activeInput.value === displayDate;
         const selectedClass = isSelected ? 'selected' : '';
 
-        html += `<span data-date="${displayDate}" class="${selectedClass}" onclick="selectDate('${displayDate}')">${day}</span>`;
+        html += `<span data-date="${displayDate}" class="${selectedClass}" onclick="selectDate('${displayDate}')" ${dayDisabled}>${day}</span>`;
     }
     
     html += '</div></div>';
@@ -493,6 +534,17 @@ function renderCalendar(date) {
 
 function navigateMonth(offset) {
     currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+    renderCalendar(currentCalendarDate);
+}
+
+// FIX: New jump functions added and globally exposed
+function jumpToMonth(newMonth) {
+    currentCalendarDate.setMonth(parseInt(newMonth));
+    renderCalendar(currentCalendarDate);
+}
+
+function jumpToYear(newYear) {
+    currentCalendarDate.setFullYear(parseInt(newYear));
     renderCalendar(currentCalendarDate);
 }
 
@@ -511,6 +563,8 @@ function selectDate(dateString) {
 // Ensure calendar navigation functions are globally available
 window.navigateMonth = navigateMonth;
 window.selectDate = selectDate;
+window.jumpToMonth = jumpToMonth;
+window.jumpToYear = jumpToYear;
 
 
 /* -----------------------------
@@ -539,14 +593,14 @@ function applyFilters(page = 1) {
     filteredData = sampleData.filter(item => {
         // Search filter (Patch Name or Computer Name)
         const itemText = (item.patchName + ' ' + item.computerName).toLowerCase();
-        // FIX 3: Allow filter if search is empty. If search has text, check if itemText includes it.
+        // Dynamic search FIX: Filter if search has input, otherwise pass.
         if (search && !itemText.includes(search)) {
             return false;
         }
         
         // Table Status filter (Custom Select)
-        // FIX 2: Check if status is explicitly filtered, AND if the selected value is NOT 'all'.
-        if (status && status !== 'all' && item.status.toLowerCase() !== status) {
+        // FIX 2: Check if status is NOT empty/All. If it's selected, it must match.
+        if (status && item.status.toLowerCase() !== status) {
             return false;
         }
         
@@ -714,7 +768,6 @@ document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV);
 // Dynamic search trigger (re-filter and reset to page 1)
 document.getElementById('search').addEventListener('keyup', function() {
     // CRITICAL FIX: Always trigger filtering if search value exists, or if filtering has already occurred.
-    // Length >= 0 covers all key presses and ensures search results update instantly.
     if (this.value.length >= 0) { 
         applyFilters(1);
     }
