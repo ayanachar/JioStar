@@ -45,7 +45,7 @@ const sampleData = [
     { patchName: "Linux SSH Hardening Patch", severity: "Critical", computerName: "SRV-143", group: "servers", from: "2025-02-08", to: "2025-02-09", status: "Pending" },
     { patchName: "Windows Bluetooth Security Patch", severity: "High", computerName: "WKS-144", group: "workstations", from: "2025-02-10", to: "2025-02-11", status: "Pending" },
     { patchName: "Exchange Mailbox Safety Patch", severity: "Critical", computerName: "SRV-145", group: "servers", from: "2025-02-12", to: "2025-02-13", status: "Remediated" },
-    { patchName: "Chrome Web Engine Patch", severity: "High", computerName: "LAP-146", group: "laptops", from: "2025-03-14", to: "2025-03-15", status: "Pending" },
+    { patchName: "Chrome Web Engine Patch", severity: "High", computerName: "LAP-146", group: "laptops", from: "2025-03-14", to:"2025-03-16", status: "Pending" },
     { patchName: "Windows Memory Leak Patch", severity: "Critical", computerName: "WKS-147", group: "workstations", from: "2025-03-16", to: "2025-03-17", status: "Remediated" },
     { patchName: "Linux Container Security Patch", severity: "High", computerName: "SRV-148", group: "servers", from: "2025-03-18", to: "2025-03-19", status: "Pending" },
     { patchName: "Office VBA Runtime Patch", severity: "Important", computerName: "WKS-149", group: "workstations", from: "2025-03-20", to: "2025-03-21", status: "Remediated" },
@@ -58,8 +58,8 @@ const rowsPerPage = 10;
 let filteredData = []; // Stores the fully filtered dataset
 
 /* -----------------------------
-    CUSTOM MULTI-SELECT SETUP (Top Filters)
-   ----------------------------- */
+    CUSTOM MULTI-SELECT SETUP (Top Filters)
+   ----------------------------- */
 function initMultiselect(multiselectId) {
     const multiselect = document.getElementById(multiselectId);
     const trigger = multiselect.querySelector('.multiselect-trigger');
@@ -133,13 +133,13 @@ document.addEventListener('click', function() {
     });
 });
 
-// Init multiselects
+// Init multiselects (Only Severity remains as multiselect)
 initMultiselect('severityMultiselect');
-initMultiselect('groupMultiselect');
+// initMultiselect('groupMultiselect'); <-- REMOVED
 
 /* -----------------------------
-    CUSTOM SINGLE-SELECT SETUP (Table Controls)
-   ----------------------------- */
+    CUSTOM SINGLE-SELECT SETUP (Table Controls & Group Filter)
+   ----------------------------- */
 function initCustomSelects() {
     document.querySelectorAll('.custom-select').forEach(select => {
         const trigger = select.querySelector('.select-trigger');
@@ -198,7 +198,7 @@ function initCustomSelects() {
                     text.textContent = 'Export';
                     select.dataset.value = '';
                 } else {
-                    // For other selects, apply filters (resets to page 1)
+                    // For other selects (Status, Severity2, Group), apply filters (resets to page 1)
                     applyFilters(1);
                 }
 
@@ -210,8 +210,8 @@ function initCustomSelects() {
 initCustomSelects();
 
 /* -----------------------------
-    Helpers to get selected values
-   ----------------------------- */
+    Helpers to get selected values
+   ----------------------------- */
 function getCustomSelectValue(id) {
     const sel = document.querySelector(`.custom-select[data-id="${id}"]`);
     if (!sel) return '';
@@ -224,14 +224,14 @@ function getSelectedValues(multiselectId) {
 }
 
 /* -----------------------------
-    PAGINATION & DISPLAY FUNCTIONS
-   ----------------------------- */
+    PAGINATION & DISPLAY FUNCTIONS
+   ----------------------------- */
 
 /**
- * Renders the table body with the data for the current page.
- * @param {Array} data - The array of patches (already filtered) to display.
- * @param {number} page - The current page number.
- */
+ * Renders the table body with the data for the current page.
+ * @param {Array} data - The array of patches (already filtered) to display.
+ * @param {number} page - The current page number.
+ */
 function displayTableData(data, page) {
     const tableBody = document.getElementById('tableBody');
     tableBody.innerHTML = '';
@@ -273,13 +273,11 @@ function displayTableData(data, page) {
     });
 
     renderPagination(data.length, page);
-
-    // Apply any additional per-row styling if needed (not strictly necessary because badges handle look)
 }
 
 /**
- * Renders the pagination controls (Previous/Next buttons, page numbers).
- */
+ * Renders the pagination controls (Previous/Next buttons, page numbers).
+ */
 function renderPagination(totalItems, page) {
     const paginationContainer = document.getElementById('paginationContainer');
     paginationContainer.innerHTML = '';
@@ -372,8 +370,8 @@ function renderPagination(totalItems, page) {
 }
 
 /* -----------------------------
-    Helpers for badge classes
-   ----------------------------- */
+    Helpers for badge classes
+   ----------------------------- */
 function getStatusClass(status) {
     const s = (status || '').toLowerCase();
     if (s === 'remediated') return 'status-remediated';
@@ -389,23 +387,24 @@ function getSeverityClass(sev) {
 }
 
 /* -----------------------------
-    FILTERING CORE LOGIC
-   ----------------------------- */
+    FILTERING CORE LOGIC
+   ----------------------------- */
 
 /**
- * Calculates and filters the data based on all criteria.
- * Then calls displayTableData with the first page (or specified page).
- * @param {number} [page=1] - The page number to navigate to after filtering.
- */
+ * Calculates and filters the data based on all criteria.
+ * Then calls displayTableData with the first page (or specified page).
+ * @param {number} [page=1] - The page number to navigate to after filtering.
+ */
 function applyFilters(page = 1) {
-    // 1. Get filter values (Using custom select helper)
+    // 1. Get filter values
     const search = document.getElementById('search').value.toLowerCase();
     const status = getCustomSelectValue('status');
     const severity2 = getCustomSelectValue('severity2');
+    const group = getCustomSelectValue('group'); // NEW: Get value from single select
+    
     const dateFrom = document.getElementById('dateFrom').value;
     const dateTo = document.getElementById('dateTo').value;
     const selectedSeverities = getSelectedValues('severityMultiselect');
-    const selectedGroups = getSelectedValues('groupMultiselect');
 
     // 2. Filter the entire dataset
     filteredData = sampleData.filter(item => {
@@ -422,14 +421,17 @@ function applyFilters(page = 1) {
         if (severity2 && item.severity.toLowerCase() !== severity2) {
             return false;
         }
+        
         // Multiselect Severity filter (Top Filter)
         if (selectedSeverities.length > 0 && !selectedSeverities.includes(item.severity.toLowerCase())) {
             return false;
         }
-        // Multiselect Group filter (Top Filter)
-        if (selectedGroups.length > 0 && !selectedGroups.includes(item.group.toLowerCase())) {
+        
+        // NEW: Single-select Group filter (Top Filter)
+        if (group && item.group.toLowerCase() !== group) {
             return false;
         }
+        
         // Date From filter
         if (dateFrom && item.from < dateFrom) {
             return false;
@@ -447,24 +449,33 @@ function applyFilters(page = 1) {
 }
 
 /* -----------------------------
-    RESET FILTERS
-   ----------------------------- */
+    RESET FILTERS
+   ----------------------------- */
 function resetFilters() {
-    // clear multiselects
+    // clear multiselects (ONLY SEVERITY REMAINS)
     document.querySelectorAll('.custom-multiselect').forEach(multiselect => {
         const checkboxes = multiselect.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(cb => cb.checked = false);
         const textElement = multiselect.querySelector('.multiselect-text');
-        const defaultText = multiselect.id === 'severityMultiselect' ? 'Severity' : 'Group';
-        textElement.textContent = defaultText;
+        // Only checks for severity multiselect
+        if (multiselect.id === 'severityMultiselect') {
+            textElement.textContent = 'Severity';
+        }
         multiselect.querySelector('.multiselect-dropdown').classList.remove('show');
         multiselect.querySelector('.multiselect-trigger').classList.remove('active');
     });
 
-    // reset custom selects (Status, Severity2, Export)
+    // reset custom selects (Status, Severity2, Export, and Group)
     document.querySelectorAll('.custom-select').forEach(s => {
         s.dataset.value = '';
-        s.querySelector('.select-text').textContent = s.dataset.id === 'status' ? 'Status' : (s.dataset.id === 'severity2' ? 'Severity' : 'Export');
+        
+        // UPDATED LOGIC HERE: Include 'group'
+        let defaultText = s.dataset.id === 'status' ? 'Status' : 
+                          s.dataset.id === 'severity2' ? 'Severity' : 
+                          s.dataset.id === 'group' ? 'Group' : 'Export';
+        
+        s.querySelector('.select-text').textContent = defaultText;
+
         // Close dropdowns
         s.querySelector('.select-dropdown').classList.remove('show');
         s.querySelector('.select-trigger').classList.remove('active');
@@ -496,8 +507,8 @@ function resetFilters() {
 }
 
 /* -----------------------------
-    Export helpers (CSV/Excel/PDF)
-   ----------------------------- */
+    Export helpers (CSV/Excel/PDF)
+   ----------------------------- */
 function exportToCSV() {
     if (filteredData.length === 0) {
         alert('No data to export. Please apply filters first to load data.');
@@ -557,13 +568,15 @@ function handleExport(type) {
 }
 
 /* -----------------------------
-    Event listeners & wiring
-   ----------------------------- */
+    Event listeners & wiring
+   ----------------------------- */
 document.getElementById('applyBtn').addEventListener('click', () => applyFilters(1));
 document.getElementById('resetBtn').addEventListener('click', resetFilters);
+document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV);
 
 // Dynamic search trigger (re-filter and reset to page 1)
 document.getElementById('search').addEventListener('keyup', function() {
+    // Only filter if there is data loaded or if the user types more than 2 chars to search
     if (filteredData.length > 0 || this.value.length > 2) applyFilters(1);
 });
 
@@ -592,7 +605,7 @@ document.querySelectorAll('.custom-input input').forEach(inp => {
 });
 
 /* -----------------------------
-    Initialize default table (empty state)
-   ----------------------------- */
+    Initialize default table (empty state)
+   ----------------------------- */
 // show empty initial state (no data until filters applied)
 resetFilters();
